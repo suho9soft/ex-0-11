@@ -41,7 +41,11 @@ FLUSH PRIVILEGES;
 sudo systemctl restart mariadb
 
 //계정생성확인(로그인해보기)
-sudo mysql -u nockanda - p
+
+sudo mysql -u arduino - p
+
 //비밀번호입력
+
+show databases;
 
 
