@@ -36,6 +36,7 @@ GRANT CREATE, DROP, ALTER, SELECT, INSERT, UPDATE, DELETE ON *.* TO 'arduino'@'%
 
 FLUSH PRIVILEGES;
 
+
 //데이터베이스 재부팅
 
 sudo systemctl restart mariadb
