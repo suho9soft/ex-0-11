@@ -48,6 +48,13 @@ sudo mysql -u arduino - p
 
 show databases;
 
+USE python13;
+
+SHOW TABLES;
+
+DESC student;
+
+
 INSERT INTO student (name, age, gender) VALUES ('홍길동', 20, '남성');
 
 
