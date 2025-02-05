@@ -9,3 +9,8 @@ IoT MQTT Panel 호환이 가능 합니다 핸드폰에 앱이 있습니다
 카메라 도 토니에서 된니다 잘 세팅 하면 된니다
 
 esp32반도체 안드로이드 Pydroid 3 에서 핸드폰 에서 led 켜짐 꺼짐 이 된니다
+
+다른 편집기 사용: vi 대신 다른 텍스트 편집기인 nano를 사용해 볼 수 있습니다.
+
+sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
+
