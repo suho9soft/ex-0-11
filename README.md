@@ -76,6 +76,8 @@ DELETE FROM rotary_data;
 
 desc dht11_data;
 
+INSERT INTO dht11_data (temp, humi, date) VALUES (1, 2, '3');
+
 
 
 
