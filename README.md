@@ -61,5 +61,11 @@ select * from student;
 
 sudo mysql -u arduino -p
 
+SHOW TABLES;
+
+desc rotary_data;
+
+
+
 
 
