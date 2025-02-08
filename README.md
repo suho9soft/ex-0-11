@@ -48,8 +48,6 @@ sudo mysql -u arduino -p
 
 show databases;
 
-show databases;
-
 SHOW TABLES;
 
 DESC student;
