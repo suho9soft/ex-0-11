@@ -68,7 +68,8 @@ SHOW TABLES;
 
 desc rotary_data;
 
-insert into rotary_data(rotary,date) values(1,'2');
+INSERT INTO rotary_data (rotaty, date) VALUES (1, '2');
+
 
 
 
