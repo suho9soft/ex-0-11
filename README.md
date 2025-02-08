@@ -70,6 +70,9 @@ desc rotary_data;
 
 INSERT INTO rotary_data (rotaty, date) VALUES (1, '2');
 
+SELECT * FROM rotary_data;
+
+
 
 
 
