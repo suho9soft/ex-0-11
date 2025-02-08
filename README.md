@@ -48,7 +48,7 @@ sudo mysql -u arduino - p
 
 show databases;
 
-USE python13;
+show databases;
 
 SHOW TABLES;
 
@@ -61,12 +61,14 @@ select * from student;
 
 sudo mysql -u arduino -p
 
+use python14;
+
+
 SHOW TABLES;
 
 desc rotary_data;
 
-insert into rotary_data(rotary,date)values(1,'2');
-
+insert into rotary_data(rotary,date) values(1,'2');
 
 
 
