@@ -59,5 +59,7 @@ INSERT INTO student (name, age, gender) VALUES ('홍길동', 20, '남성');
 
 select * from student;
 
+sudo mysql -u arduino -p
+
 
 
