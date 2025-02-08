@@ -74,6 +74,9 @@ SELECT * FROM rotary_data;
 
 DELETE FROM rotary_data;
 
+desc dht11_data;
+
+
 
 
 
