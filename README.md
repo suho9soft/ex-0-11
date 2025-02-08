@@ -78,6 +78,8 @@ desc dht11_data;
 
 INSERT INTO dht11_data (temp, humi, date) VALUES (1, 2, '3');
 
+SELECT * FROM dht11_data;
+
 
 
 
