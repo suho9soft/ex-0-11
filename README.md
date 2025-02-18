@@ -48,6 +48,9 @@ sudo mysql -u arduino -p
 
 show databases;
 
+
+
+
 1// show tables;
 
 desc s기
