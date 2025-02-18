@@ -55,7 +55,9 @@ use python14;
 
 1// show tables;
 
-desc s기
+desc rotary_data;
+
+select * from rotary_data;
 
 2// show tables;
 
