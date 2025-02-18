@@ -53,7 +53,7 @@ show tables;
 desc student;
 
 
-insert into student (name, age, gender) VALUES ('홍길동', 20, '남성');
+insert into student (name, age, gender) values ('홍길동', 20, '남성');
 
 select * from student;
 
