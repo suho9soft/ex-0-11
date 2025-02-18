@@ -75,6 +75,9 @@ select * from dht11_data;
 
 desc final_data;
 
+select * from final_data;
+
+
 
 
 
