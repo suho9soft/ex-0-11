@@ -73,6 +73,8 @@ desc dht11_data;
 
 select * from dht11_data;
 
+show tables;
+
 desc final_data;
 
 select * from final_data;
