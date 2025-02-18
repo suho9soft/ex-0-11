@@ -50,30 +50,15 @@ show databases;
 
 show tables;
 
-desc student;
+desc s기
 
-
-insert into student (name, age, gender) values ('홍길동', 20, '남성');
-
-select * from student;
-
-sudo mysql -u arduino -p
-
-use python14;
-
-show tables;
-
-desc rotary_data;
-
-select * from rotary_data;
-
-delete frim rotary_data;
+2// show tables;
 
 desc dht11_data;
 
 select * from dht11_data;
 
-show tables;
+3// show tables;
 
 desc final_data;
 
