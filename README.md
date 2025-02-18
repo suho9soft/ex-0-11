@@ -48,6 +48,8 @@ sudo mysql -u arduino -p
 
 show databases;
 
+use python14;
+
 
 
 
