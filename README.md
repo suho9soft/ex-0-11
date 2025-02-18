@@ -48,12 +48,12 @@ sudo mysql -u arduino -p
 
 show databases;
 
-SHOW TABLES;
+show tables;
 
-DESC student;
+desc student;
 
 
-INSERT INTO student (name, age, gender) VALUES ('홍길동', 20, '남성');
+insert into student (name, age, gender) VALUES ('홍길동', 20, '남성');
 
 select * from student;
 
@@ -61,18 +61,17 @@ sudo mysql -u arduino -p
 
 use python14;
 
-
-SHOW TABLES;
+show tables;
 
 desc rotary_data;
 
-SELECT * FROM rotary_data;
+select * from rotary_data;
 
-DELETE FROM rotary_data;
+delete frim rotary_data;
 
 desc dht11_data;
 
-SELECT * FROM dht11_data;
+select * from dht11_data;
 
 
 
