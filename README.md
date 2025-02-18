@@ -48,24 +48,25 @@ sudo mysql -u arduino -p
 
 show databases;
 
-use python14;
+1// use python14;
 
-
-
-
-1// show tables;
+show tables;
 
 desc rotary_data;
 
 select * from rotary_data;
 
-2// show tables;
+2// use python14;
+
+show tables;
 
 desc dht11_data;
 
 select * from dht11_data;
 
-3// show tables;
+3// use python14;
+
+show tables;
 
 desc final_data;
 
