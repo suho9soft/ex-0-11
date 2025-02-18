@@ -66,19 +66,11 @@ SHOW TABLES;
 
 desc rotary_data;
 
-INSERT INTO rotary_data (rotaty, date) VALUES (1, '2025-02-15 20:47:00');
-
 SELECT * FROM rotary_data;
 
 DELETE FROM rotary_data;
 
 desc dht11_data;
-
-INSERT INTO dht11_data (temp, humi, date) VALUES (25.5, 60, '2025-02-15 20:31:00');
-
-BEGIN;
-INSERT INTO dht11_data (temp, humi, date) VALUES (25.5, 60, '2025-02-15 20:31:00');
-COMMIT;
 
 SELECT * FROM dht11_data;
 
