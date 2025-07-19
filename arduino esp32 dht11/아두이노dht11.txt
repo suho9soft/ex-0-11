@@ -1,153 +1,202 @@
-#include <WiFi.h> //ESP32용
+#include <WiFi.h>
+#include "wifi_credentials.h"  // ssid, password 정의
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "DHT.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <time.h>
 
+// OLED 설정
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+// 핀 설정
 #define DHTPIN 15
 #define DHTTYPE DHT11
+#define POTPIN 35
+#define RELAY_PIN 32
+
+const int ledPins[8] = {2, 4, 5, 18, 19, 25, 26, 27};
+
 DHT dht(DHTPIN, DHTTYPE);
 
-StaticJsonDocument<96> doc_in;
-StaticJsonDocument<96> doc_out;
-
-//ESP32가 인터넷공유기와 접속해야하니 ID비밀번호 넣기!
-
-const char* ssid = "........";
-const char* password = "........";
-
-//브로커의 주소!
+// MQTT 설정
 const char* mqtt_server = "broker.emqx.io";
-
-//여기 있는것은 그냥 있으면됨!
 WiFiClient espClient;
 PubSubClient client(espClient);
-unsigned long lastMsg = 0;
-#define MSG_BUFFER_SIZE  (50)
-char msg[MSG_BUFFER_SIZE];
-int value = 0;
+StaticJsonDocument<256> doc_out;
 
-unsigned long mqtt_t = 0; //ESP32의 시간을 저장!
+unsigned long mqtt_t = 0;
+const unsigned long mqtt_interval = 2000;
 
-//ESP32가 인터넷공유기와 접속을 하기 위한 부분
+bool relayState = false;
+
+// ===== WiFi 연결 =====
 void setup_wifi() {
-
-  delay(10);
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.mode(WIFI_STA);
+  Serial.print("🔌 WiFi 연결 중...");
   WiFi.begin(ssid, password);
-
-
- while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-
-  randomSeed(micros());
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println("\n✅ WiFi 연결 완료: " + WiFi.localIP().toString());
 }
 
-//ESP32가 데이터를 브로커로부터 수신하는 부분!
-void on_message(char* topic, byte* payload, unsigned int length) {
-  //ESP32가 mqtt데이터를 수신하면 토픽과 페이로드를 출력함!
-  String mypayload = "";
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    mypayload +=(char)payload[i];
-    Serial.print((char)payload[i]);
+// ===== MQTT 콜백 =====
+void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+  payload[length] = '\0';
+  String message = String((char*)payload);
+  Serial.printf("📥 수신됨 (%s): %s\n", topic, message.c_str());
+
+  if (String(topic) == "arduino/output") {
+    if (message.equalsIgnoreCase("post 3200 on")) {
+      digitalWrite(RELAY_PIN, HIGH);
+      relayState = true;
+      Serial.println("⚡ 수동 릴레이 ON");
+    } else if (message.equalsIgnoreCase("post 3200 off")) {
+      digitalWrite(RELAY_PIN, LOW);
+      relayState = false;
+      Serial.println("🛑 수동 릴레이 OFF");
+    }
   }
-  Serial.println();
 
-  //byte배열로 들어오는 payload를 문자열로 전환해야한다!
-
-  DeserializationError error = deserializeJson(doc_in, mypayload);
-  //파이썬쪽에서 json규칙에 위배되는 데이터를 전송하는 경우 에러임!
-  if (error) {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.f_str());
-    return;
+  for (int i = 0; i < 8; i++) {
+    String ledTopic = "arduino/led" + String(i + 1);
+    if (String(topic) == ledTopic) {
+      digitalWrite(ledPins[i], message == "1" ? HIGH : LOW);
+      Serial.printf("💡 LED %d → %s\n", i + 1, message == "1" ? "ON" : "OFF");
+    }
   }
-  //파이썬에서 보내는 key-value쌍으로 표현한다
-  String myname = doc_in["name"]; // "arduino"
-  int age = doc_in["age"]; // 20
-  String gender = doc_in["gender"]; // "male"
-
-
-
-  Serial.print("이름=");
-  Serial.print(myname);
-  Serial.print(",나이=");
-  Serial.print(age);
-  Serial.print(",성별=");
-  Serial.print(gender);
-  Serial.println();
 }
 
-//ESP32가 브로커와 접속을 유지하는 부분
+// ===== MQTT 재연결 =====
 void reconnect() {
-  //ESP32가 브로커와 접속이 될때까지 무한루프를 돌리겠다!
   while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    //MQTT커넥션의 클라이언트 ID를 랜덤하게 적용한다!
-    String clientId = "ESP8266Client-";
-    clientId += String(random(0xffff), HEX);
-    //MQTT브코러와 접속하기!
+    Serial.print("🔄 MQTT 연결 시도...");
+    String clientId = "ESP32Client-" + String(random(0xffff), HEX);
     if (client.connect(clientId.c_str())) {
-      Serial.println("connected");
-      //브로커와 접속완료후에 구독등록을 한다!
+      Serial.println("✅ MQTT 연결 성공");
       client.subscribe("arduino/output");
+      for (int i = 1; i <= 8; i++) {
+        client.subscribe(("arduino/led" + String(i)).c_str());
+      }
     } else {
-      //접속에 실패하면 5초뒤에 재접속을 시도한다!
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      Serial.printf("❌ 연결 실패(%d) → 5초 후 재시도\n", client.state());
       delay(5000);
     }
   }
 }
 
+// ===== 날짜 + 요일 =====
+String getDateDay() {
+  struct tm t;
+  if (!getLocalTime(&t)) return "--/---";
+  const char* days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+  char buf[16];
+  strftime(buf, sizeof(buf), "%Y-%m-%d", &t);
+  return String(buf) + "/" + days[t.tm_wday];
+}
+
+// ===== 시간 =====
+String getTime() {
+  struct tm t;
+  if (!getLocalTime(&t)) return "--:--:--";
+  char buf[9];
+  strftime(buf, sizeof(buf), "%H:%M:%S", &t);
+  return String(buf);
+}
+
+// ===== OLED 출력 =====
+void showDisplay(float temp, float humi, int pot) {
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setFont(&FreeSans9pt7b);
+
+  display.setCursor(0, 14);
+  display.println(getDateDay());  // 날짜
+
+  display.setCursor(0, 30);
+  display.println(getTime());     // 시간
+
+  display.setCursor(0, 46);
+  display.printf("%.1f°C / %.1f%%", temp, humi);  // 온습도
+
+  display.setCursor(0, 62);
+  display.printf("POT: %d  %s", pot, relayState ? "ON" : "OFF");  // POT, 릴레이
+
+  display.display();
+}
+
+// ===== 초기화 =====
 void setup() {
   Serial.begin(115200);
   dht.begin();
-  setup_wifi(); //인터넷공유기랑 접속해라!
-  client.setServer(mqtt_server, 1883); //브로커랑 접속해라!
-  client.setCallback(on_message); //ESP32가 수신하면 callback이라는 함수가 호출됨!
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+
+  for (int i = 0; i < 8; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  setup_wifi();
+
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(mqtt_callback);
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("❌ OLED 초기화 실패!");
+    while (true);
+  }
+
+  configTime(9 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+  while (time(nullptr) < 100000) delay(500);
+  Serial.println("⏰ 시간 동기화 완료");
 }
 
+// ===== 메인 루프 =====
 void loop() {
-  //만약 ESP32가 브로커와 접속이 되어있지 않다면~
-  if (!client.connected()) {
-    //재접속 함수가 호출됨!
-    reconnect();
-  }  
-  client.loop(); //MQTT가 동작하기 위해 필요한 부분!
+  if (!client.connected()) reconnect();
+  client.loop();
 
-  //0.5초간격으로 파이썬에게 가변저항값을 측정해서 전송한다!
-  if(millis() - mqtt_t > 1000){
+  if (millis() - mqtt_t > mqtt_interval) {
     mqtt_t = millis();
 
-    doc_out["rotary"] = analogRead(34);
-    doc_out["temp"] = dht.readTemperature()*10;
-    doc_out["humi"] = dht.readHumidity()*10;
-    
-    String output = "";
-    serializeJson(doc_out, output);
+    float temp = dht.readTemperature();
+    float humi = dht.readHumidity();
+    int pot = analogRead(POTPIN);
 
-    client.publish("arduino/input", output.c_str());
+    if (isnan(temp) || isnan(humi)) {
+      Serial.println("❗ 센서 오류");
+      return;
+    }
+
+    // 릴레이 자동 제어
+    if (pot >= 3200 && !relayState) {
+      digitalWrite(RELAY_PIN, HIGH);
+      relayState = true;
+      Serial.println("🟢 POT >= 3200 → 릴레이 ON");
+    } else if (pot < 3200 && relayState) {
+      digitalWrite(RELAY_PIN, LOW);
+      relayState = false;
+      Serial.println("🔴 POT < 3200 → 릴레이 OFF");
+    }
+
+    // MQTT 전송
+    doc_out["temp"] = temp;
+    doc_out["humi"] = humi;
+    doc_out["pot"] = pot;
+    doc_out["relay"] = relayState;
+
+    String js;
+    serializeJson(doc_out, js);
+    client.publish("arduino/input", js.c_str());
+    Serial.printf("📤 MQTT 전송: %s\n", js.c_str());
+
+    showDisplay(temp, humi, pot);
   }
 }
-
-
-
-
-
