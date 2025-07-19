@@ -79,28 +79,25 @@ void reconnect() {
     Serial.print("🔄 MQTT 연결 시도...");
     String clientId = "ESP32Client-" + String(random(0xffff), HEX);
     if (client.connect(clientId.c_str())) {
-      Serial.println("성공!");
+      Serial.println("✅ MQTT 연결 성공");
       client.subscribe("arduino/output");
       for (int i = 1; i <= 8; i++) {
         client.subscribe(("arduino/led" + String(i)).c_str());
       }
     } else {
-      Serial.printf("실패(%d) → 5초 후 재시도\n", client.state());
+      Serial.printf("❌ 연결 실패(%d) → 5초 후 재시도\n", client.state());
       delay(5000);
     }
   }
 }
 
-// ===== 날짜 + 요일 (한줄로, 예: 2025-07-16/Wed) =====
+// ===== 날짜 + 요일 =====
 String getDateDay() {
   struct tm t;
   if (!getLocalTime(&t)) return "--/---";
-
   const char* days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-
   char buf[16];
   strftime(buf, sizeof(buf), "%Y-%m-%d", &t);
-
   return String(buf) + "/" + days[t.tm_wday];
 }
 
@@ -108,10 +105,8 @@ String getDateDay() {
 String getTime() {
   struct tm t;
   if (!getLocalTime(&t)) return "--:--:--";
-
   char buf[9];
   strftime(buf, sizeof(buf), "%H:%M:%S", &t);
-
   return String(buf);
 }
 
@@ -122,16 +117,16 @@ void showDisplay(float temp, float humi, int pot) {
   display.setFont(&FreeSans9pt7b);
 
   display.setCursor(0, 14);
-  display.println(getDateDay());  // 날짜/요일
+  display.println(getDateDay());  // 날짜
 
   display.setCursor(0, 30);
-  display.println(getTime());  // 시간
+  display.println(getTime());     // 시간
 
   display.setCursor(0, 46);
-  display.printf("%.1f°C / %.1f%%", temp, humi);  // 온도 / 습도
+  display.printf("%.1f°C / %.1f%%", temp, humi);  // 온습도
 
   display.setCursor(0, 62);
-  display.printf("POT: %d  %s", pot, relayState ? "ON" : "OFF");  // 가변저항 + 릴레이 상태
+  display.printf("POT: %d  %s", pot, relayState ? "ON" : "OFF");  // POT, 릴레이
 
   display.display();
 }
@@ -158,12 +153,9 @@ void setup() {
     while (true);
   }
 
-  display.setTextColor(SSD1306_WHITE);
-  display.setFont(&FreeSans9pt7b);
-
   configTime(9 * 3600, 0, "pool.ntp.org", "time.nist.gov");
   while (time(nullptr) < 100000) delay(500);
-  Serial.println("⏰ NTP 시간 동기화 완료");
+  Serial.println("⏰ 시간 동기화 완료");
 }
 
 // ===== 메인 루프 =====
@@ -183,6 +175,7 @@ void loop() {
       return;
     }
 
+    // 릴레이 자동 제어
     if (pot >= 3200 && !relayState) {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
@@ -193,6 +186,7 @@ void loop() {
       Serial.println("🔴 POT < 3200 → 릴레이 OFF");
     }
 
+    // MQTT 전송
     doc_out["temp"] = temp;
     doc_out["humi"] = humi;
     doc_out["pot"] = pot;
@@ -201,9 +195,8 @@ void loop() {
     String js;
     serializeJson(doc_out, js);
     client.publish("arduino/input", js.c_str());
+    Serial.printf("📤 MQTT 전송: %s\n", js.c_str());
 
     showDisplay(temp, humi, pot);
-
-    Serial.printf("📤 MQTT 전송: %s\n", js.c_str());
   }
 }
