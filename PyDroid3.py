@@ -31,7 +31,6 @@ def insert_data_to_mysql(temp, humi, pot, relay_onoff):
         val = (pot, temp, humi, "ON" if relay_onoff else "OFF", now)
         cursor.execute(sql, val)
         conn.commit()
-        print(f"DB 저장 성공: {val}")
     except pymysql.MySQLError as e:
         print(f"MySQL 오류: {e}")
     finally:
@@ -76,7 +75,6 @@ def on_connect(client, userdata, flags, rc):
     global mqtt_connected
     mqtt_connected = rc == 0
     if mqtt_connected:
-        print("MQTT 연결 성공")
         client.subscribe("arduino/input")
         client.subscribe("arduino/output")
         for i in range(1, 9):
@@ -87,7 +85,6 @@ def on_connect(client, userdata, flags, rc):
 def on_disconnect(client, userdata, rc):
     global mqtt_connected
     mqtt_connected = False
-    print("MQTT 연결 종료")
 
 def connect_mqtt():
     client.on_connect = on_connect
@@ -145,7 +142,7 @@ time_label.pack(pady=2)
 
 # 센서 프레임
 sensor_frame = tk.Frame(window, bg=FRAME_BG)
-sensor_frame.pack(pady=5, fill="x", padx=10)
+sensor_frame.pack(pady=6, fill="x", padx=10)
 
 temp_label = tk.Label(sensor_frame, text="온도: -- °C", font=LABEL_FONT, bg=FRAME_BG, fg=LABEL_COLOR)
 temp_label.pack(anchor="w", pady=2)
@@ -167,7 +164,7 @@ for i in range(8):
     btn = tk.Button(
         led_frame,
         text=f"{i+1}",
-        width=6, height=1,
+        width=10, height=2,
         font=("Helvetica", 11),
         bg=GRAY,
         fg="#333333",
@@ -176,7 +173,7 @@ for i in range(8):
         bd=0,
         command=lambda idx=i: toggle_led(idx)
     )
-    btn.grid(row=i // 2, column=i % 2, padx=10, pady=6)
+    btn.grid(row=i // 2, column=i % 2, padx=6, pady=6)
     led_buttons.append(btn)
 
 # ===== 6. 실행 =====
