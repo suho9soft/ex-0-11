@@ -10,7 +10,6 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 import json
 
-# (참고) Note20 Ultra 5G 해상도 대비 대략적 DP 사이즈 (임의 설정)
 Window.size = (dp(360), dp(760))
 
 MQTT_BROKER = "broker.emqx.io"
@@ -18,7 +17,10 @@ MQTT_PORT = 1883
 
 class IoTDashboard(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', padding=dp(12), spacing=dp(8), **kwargs)
+        super().__init__(orientation='vertical', padding=dp(12), spacing=dp(12), **kwargs)
+
+        # 날짜/시간 위쪽 여유 공간 (padding 으로도 조절 가능)
+        self.padding = [dp(12), dp(20), dp(12), dp(12)]  # left, top, right, bottom
 
         # 날짜/시간
         self.date_label = Label(text="", font_size=sp(18), size_hint_y=None, height=dp(30))
@@ -27,23 +29,23 @@ class IoTDashboard(BoxLayout):
         self.add_widget(self.time_label)
 
         # 센서 데이터 표시 (온도, 습도, 조도)
-        self.temp_label = Label(text="온도: -- °C", font_size=sp(16), size_hint_y=None, height=dp(28))
-        self.humi_label = Label(text="습도: -- %", font_size=sp(16), size_hint_y=None, height=dp(28))
-        self.pot_label = Label(text="조도: --", font_size=sp(16), size_hint_y=None, height=dp(28))
+        self.temp_label = Label(text="🌡 온도: -- °C", font_size=sp(16), size_hint_y=None, height=dp(32))
+        self.humi_label = Label(text="💧 습도: -- %", font_size=sp(16), size_hint_y=None, height=dp(32))
+        self.pot_label = Label(text="🎛 가변저항(조도): --", font_size=sp(16), size_hint_y=None, height=dp(32))
         self.add_widget(self.temp_label)
         self.add_widget(self.humi_label)
         self.add_widget(self.pot_label)
 
         # 릴레이 상태
-        self.relay_label = Label(text="릴레이: OFF", font_size=sp(16),
-                                 size_hint_y=None, height=dp(28),
+        self.relay_label = Label(text="⚡ 릴레이: OFF", font_size=sp(16),
+                                 size_hint_y=None, height=dp(30),
                                  color=(1, 0, 0, 1))
         self.add_widget(self.relay_label)
 
         # LED 버튼 8개, 2열 x 4행 GridLayout
         self.led_grid = GridLayout(cols=2, spacing=dp(10),
                                    size_hint_y=None,
-                                   height=dp(220))  # 충분한 높이 확보
+                                   height=dp(220))
         self.led_buttons = []
         for i in range(8):
             btn = Button(
@@ -90,9 +92,9 @@ class IoTDashboard(BoxLayout):
         if topic == "arduino/input":
             try:
                 data = json.loads(payload)
-                self.temp_label.text = f"온도: {data.get('temp', 0.0):.1f} °C"
-                self.humi_label.text = f"습도: {data.get('humi', 0.0):.1f} %"
-                self.pot_label.text = f"조도: {data.get('pot', 0)}"
+                self.temp_label.text = f"🌡 온도: {data.get('temp', 0.0):.1f} °C"
+                self.humi_label.text = f"💧 습도: {data.get('humi', 0.0):.1f} %"
+                self.pot_label.text = f"🎛 가변저항(조도): {data.get('pot', 0)}"
                 self.relay = bool(data.get("relay", False))
                 self.update_relay()
             except Exception as e:
@@ -110,7 +112,7 @@ class IoTDashboard(BoxLayout):
                     self.led_buttons[i].background_color = (0, 1, 0, 1) if state else (0.5, 0.5, 0.5, 1)
 
     def update_relay(self):
-        self.relay_label.text = f"릴레이: {'ON' if self.relay else 'OFF'}"
+        self.relay_label.text = f"⚡ 릴레이: {'ON' if self.relay else 'OFF'}"
         self.relay_label.color = (0, 1, 0, 1) if self.relay else (1, 0, 0, 1)
 
     def toggle_led(self, idx):
