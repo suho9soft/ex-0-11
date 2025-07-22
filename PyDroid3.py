@@ -5,13 +5,13 @@ import json
 import pymysql
 import time
 
-# ========== 1. 전역 상태 ==========
+# ===== 1. 전역 상태 =====
 relay_state = False
 led_states = [False] * 8
 current_values = {"temp": 0.0, "humi": 0.0, "pot": 0}
 mqtt_connected = False
 
-# ========== 2. DB 설정 ==========
+# ===== 2. DB 설정 =====
 DB_CONFIG = {
     "host": "localhost",
     "user": "arduino",
@@ -38,7 +38,7 @@ def insert_data_to_mysql(temp, humi, pot, relay_onoff):
         cursor.close()
         conn.close()
 
-# ========== 3. MQTT ==========
+# ===== 3. MQTT 설정 =====
 MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
@@ -99,7 +99,7 @@ def connect_mqtt():
     except Exception as e:
         print(f"MQTT 오류: {e}")
 
-# ========== 4. UI 업데이트 ==========
+# ===== 4. UI 업데이트 =====
 def update_ui():
     temp_label.config(text=f"온도: {current_values['temp']:.1f} °C")
     humi_label.config(text=f"습도: {current_values['humi']:.1f} %")
@@ -124,47 +124,50 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", payload)
     update_ui()
 
-# ========== 5. GUI ==========
+# ===== 5. GUI 설정 =====
 window = tk.Tk()
 window.title("IoT 대시보드")
 window.geometry("360x640")
 window.configure(bg="#1E1F26")
 
-LABEL_FONT = ("Helvetica", 12)
-TITLE_FONT = ("Helvetica", 16, "bold")
+LABEL_FONT = ("Helvetica", 11)
+TITLE_FONT = ("Helvetica", 14, "bold")
 LABEL_COLOR = "#FFFFFF"
 FRAME_BG = "#2B2D3C"
 ORANGE = "#FF6600"
 GRAY = "#E0E0E0"
 
+# 날짜/시간
 date_label = tk.Label(window, text="", font=TITLE_FONT, bg="#1E1F26", fg=ORANGE)
 date_label.pack(pady=2)
 time_label = tk.Label(window, text="", font=TITLE_FONT, bg="#1E1F26", fg=ORANGE)
 time_label.pack(pady=2)
 
-sensor_frame = tk.LabelFrame(window, text="센서", font=TITLE_FONT, bg=FRAME_BG, fg=LABEL_COLOR, padx=10, pady=5)
-sensor_frame.pack(pady=10)
+# 센서 프레임
+sensor_frame = tk.Frame(window, bg=FRAME_BG)
+sensor_frame.pack(pady=5, fill="x", padx=10)
 
 temp_label = tk.Label(sensor_frame, text="온도: -- °C", font=LABEL_FONT, bg=FRAME_BG, fg=LABEL_COLOR)
+temp_label.pack(anchor="w", pady=2)
 humi_label = tk.Label(sensor_frame, text="습도: -- %", font=LABEL_FONT, bg=FRAME_BG, fg=LABEL_COLOR)
+humi_label.pack(anchor="w", pady=2)
 pot_label = tk.Label(sensor_frame, text="조도: --", font=LABEL_FONT, bg=FRAME_BG, fg=LABEL_COLOR)
+pot_label.pack(anchor="w", pady=2)
 
-temp_label.grid(row=0, column=0, padx=10, pady=5)
-humi_label.grid(row=0, column=1, padx=10, pady=5)
-pot_label.grid(row=1, column=0, columnspan=2, pady=5)
-
+# 릴레이 상태
 relay_label = tk.Label(window, text="릴레이: OFF", font=LABEL_FONT, bg="#1E1F26", fg="#E74C3C")
 relay_label.pack(pady=5)
 
+# LED 프레임
 led_frame = tk.LabelFrame(window, text="LED 제어", font=TITLE_FONT, bg=FRAME_BG, fg=LABEL_COLOR)
-led_frame.pack(pady=10)
+led_frame.pack(pady=5)
 
 led_buttons = []
 for i in range(8):
     btn = tk.Button(
         led_frame,
         text=f"{i+1}",
-        width=5, height=1,
+        width=6, height=1,
         font=("Helvetica", 11),
         bg=GRAY,
         fg="#333333",
@@ -176,7 +179,7 @@ for i in range(8):
     btn.grid(row=i // 2, column=i % 2, padx=10, pady=6)
     led_buttons.append(btn)
 
-# ========== 6. 실행 ==========
+# ===== 6. 실행 =====
 time.sleep(1)
 connect_mqtt()
 update_datetime()
