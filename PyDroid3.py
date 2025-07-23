@@ -12,8 +12,8 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 import json
 
-# ✅ 한글 폰트 등록 (글자 깨짐 방지)
-LabelBase.register(name="NotoSans", fn_regular="NotoSansCJK-Regular.ttf")
+# 👉 폰트 등록 (프로젝트 폴더에 Roboto-Regular.ttf가 있어야 함)
+LabelBase.register(name="Roboto", fn_regular="Roboto-Regular.ttf")
 
 Window.size = (dp(360), dp(760))
 
@@ -25,28 +25,28 @@ class IoTDashboard(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', padding=dp(12), spacing=dp(10), **kwargs)
 
-        font_kwargs = {"font_name": "NotoSans"}
+        font_kwargs = {"font_name": "Roboto"}
 
-        # 날짜 & 시간
+        # Date & Time
         self.date_label = Label(text="", font_size=sp(18), size_hint_y=None, height=dp(30), **font_kwargs)
         self.time_label = Label(text="", font_size=sp(18), size_hint_y=None, height=dp(30), **font_kwargs)
         self.add_widget(self.date_label)
         self.add_widget(self.time_label)
 
-        # 센서 데이터
-        self.temp_label = Label(text="온도: -- °C", font_size=sp(16), size_hint_y=None, height=dp(30), **font_kwargs)
-        self.humi_label = Label(text="습도: -- %", font_size=sp(16), size_hint_y=None, height=dp(30), **font_kwargs)
-        self.pot_label = Label(text="가변저항: --", font_size=sp(16), size_hint_y=None, height=dp(30), **font_kwargs)
+        # Sensor labels
+        self.temp_label = Label(text="Temperature: -- °C", font_size=sp(16), size_hint_y=None, height=dp(30), **font_kwargs)
+        self.humi_label = Label(text="Humidity: -- %", font_size=sp(16), size_hint_y=None, height=dp(30), **font_kwargs)
+        self.pot_label = Label(text="Potentiometer: --", font_size=sp(16), size_hint_y=None, height=dp(30), **font_kwargs)
         self.add_widget(self.temp_label)
         self.add_widget(self.humi_label)
         self.add_widget(self.pot_label)
 
-        # 릴레이 상태
-        self.relay_label = Label(text="릴레이: OFF", font_size=sp(16), size_hint_y=None, height=dp(30),
+        # Relay
+        self.relay_label = Label(text="Relay: OFF", font_size=sp(16), size_hint_y=None, height=dp(30),
                                  color=(1, 0, 0, 1), **font_kwargs)
         self.add_widget(self.relay_label)
 
-        # LED 버튼들
+        # LED Buttons
         self.led_grid = GridLayout(cols=2, spacing=dp(10), padding=dp(10), size_hint_y=None)
         self.led_grid.bind(minimum_height=self.led_grid.setter('height'))
 
@@ -82,8 +82,8 @@ class IoTDashboard(BoxLayout):
 
     def update_time(self, dt):
         now = datetime.now()
-        weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
-        self.date_label.text = now.strftime(f"%Y-%m-%d ({weekday})")
+        weekday_eng = now.strftime("%a")  # Mon, Tue, etc.
+        self.date_label.text = now.strftime(f"%Y-%m-%d ({weekday_eng})")
         self.time_label.text = now.strftime("%H:%M:%S")
 
     def on_connect(self, client, userdata, flags, rc):
@@ -100,13 +100,13 @@ class IoTDashboard(BoxLayout):
         if topic == "arduino/input":
             try:
                 data = json.loads(payload)
-                self.temp_label.text = f"온도: {data.get('temp', 0.0):.1f} °C"
-                self.humi_label.text = f"습도: {data.get('humi', 0.0):.1f} %"
-                self.pot_label.text = f"가변저항: {data.get('pot', 0)}"
+                self.temp_label.text = f"Temperature: {data.get('temp', 0.0):.1f} °C"
+                self.humi_label.text = f"Humidity: {data.get('humi', 0.0):.1f} %"
+                self.pot_label.text = f"Potentiometer: {data.get('pot', 0)}"
                 self.relay = bool(data.get("relay", False))
                 self.update_relay()
             except Exception as e:
-                print(f"[오류] JSON 파싱 실패: {e}")
+                print(f"[ERROR] Failed to parse JSON: {e}")
 
         elif topic == "arduino/output":
             self.relay = (payload.strip().upper() == "ON")
@@ -120,7 +120,7 @@ class IoTDashboard(BoxLayout):
                     self.update_led_button(i, state)
 
     def update_relay(self):
-        self.relay_label.text = f"릴레이: {'ON' if self.relay else 'OFF'}"
+        self.relay_label.text = f"Relay: {'ON' if self.relay else 'OFF'}"
         self.relay_label.color = (0, 1, 0, 1) if self.relay else (1, 0, 0, 1)
 
     def update_led_button(self, index, state):
@@ -135,7 +135,8 @@ class IoTDashboard(BoxLayout):
             self.update_led_button(idx, new_state)
 
             instance.opacity = 0.6
-            Animation(opacity=1, duration=0.15).start(instance)
+            anim = Animation(opacity=1, duration=0.15)
+            anim.start(instance)
         return callback
 
 
