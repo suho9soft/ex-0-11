@@ -21,27 +21,27 @@ class IoTDashboard(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', padding=dp(12), spacing=dp(10), **kwargs)
 
-        # 날짜/시간 표시
+        # Time display
         self.date_label = Label(text="", font_size=sp(18), size_hint_y=None, height=dp(30))
         self.time_label = Label(text="", font_size=sp(18), size_hint_y=None, height=dp(30))
         self.add_widget(self.date_label)
         self.add_widget(self.time_label)
 
-        # 센서 데이터
-        self.temp_label = Label(text="🌡 온도: -- °C", font_size=sp(16), size_hint_y=None, height=dp(30))
-        self.humi_label = Label(text="💧 습도: -- %", font_size=sp(16), size_hint_y=None, height=dp(30))
-        self.pot_label = Label(text="🎛 가변저항(조도): --", font_size=sp(16), size_hint_y=None, height=dp(30))
+        # Sensor data
+        self.temp_label = Label(text="🌡 Temperature: -- °C", font_size=sp(16), size_hint_y=None, height=dp(30))
+        self.humi_label = Label(text="💧 Humidity: -- %", font_size=sp(16), size_hint_y=None, height=dp(30))
+        self.pot_label = Label(text="🎛 Potentiometer: --", font_size=sp(16), size_hint_y=None, height=dp(30))
         self.add_widget(self.temp_label)
         self.add_widget(self.humi_label)
         self.add_widget(self.pot_label)
 
-        # 릴레이 상태
-        self.relay_label = Label(text="⚡ 릴레이: OFF", font_size=sp(16),
+        # Relay status
+        self.relay_label = Label(text="⚡ Relay: OFF", font_size=sp(16),
                                  size_hint_y=None, height=dp(30),
                                  color=(1, 0, 0, 1))
         self.add_widget(self.relay_label)
 
-        # LED 버튼 영역
+        # LED Buttons
         self.led_grid = GridLayout(cols=2, spacing=dp(10), padding=dp(10), size_hint_y=None)
         self.led_grid.bind(minimum_height=self.led_grid.setter('height'))
 
@@ -64,7 +64,7 @@ class IoTDashboard(BoxLayout):
 
         self.add_widget(self.led_grid)
 
-        # MQTT 초기화
+        # MQTT Setup
         self.relay = False
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
@@ -72,13 +72,12 @@ class IoTDashboard(BoxLayout):
         self.client.connect(MQTT_BROKER, MQTT_PORT, 60)
         self.client.loop_start()
 
-        # 시간 업데이트
         Clock.schedule_interval(self.update_time, 1)
 
     def update_time(self, dt):
         now = datetime.now()
-        wk = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
-        self.date_label.text = now.strftime(f"%Y-%m-%d ({wk})")
+        weekday_eng = now.strftime("%a")  # e.g., Mon, Tue
+        self.date_label.text = now.strftime(f"%Y-%m-%d ({weekday_eng})")
         self.time_label.text = now.strftime("%H:%M:%S")
 
     def on_connect(self, client, userdata, flags, rc):
@@ -95,13 +94,13 @@ class IoTDashboard(BoxLayout):
         if topic == "arduino/input":
             try:
                 data = json.loads(payload)
-                self.temp_label.text = f"🌡 온도: {data.get('temp', 0.0):.1f} °C"
-                self.humi_label.text = f"💧 습도: {data.get('humi', 0.0):.1f} %"
-                self.pot_label.text = f"🎛 가변저항(조도): {data.get('pot', 0)}"
+                self.temp_label.text = f"🌡 Temperature: {data.get('temp', 0.0):.1f} °C"
+                self.humi_label.text = f"💧 Humidity: {data.get('humi', 0.0):.1f} %"
+                self.pot_label.text = f"🎛 Potentiometer: {data.get('pot', 0)}"
                 self.relay = bool(data.get("relay", False))
                 self.update_relay()
             except Exception as e:
-                print(f"[오류] JSON 파싱 실패: {e}")
+                print(f"[ERROR] Failed to parse JSON: {e}")
 
         elif topic == "arduino/output":
             self.relay = (payload.strip().upper() == "ON")
@@ -115,7 +114,7 @@ class IoTDashboard(BoxLayout):
                     self.update_led_button(i, state)
 
     def update_relay(self):
-        self.relay_label.text = f"⚡ 릴레이: {'ON' if self.relay else 'OFF'}"
+        self.relay_label.text = f"⚡ Relay: {'ON' if self.relay else 'OFF'}"
         self.relay_label.color = (0, 1, 0, 1) if self.relay else (1, 0, 0, 1)
 
     def update_led_button(self, index, state):
@@ -129,8 +128,9 @@ class IoTDashboard(BoxLayout):
             self.client.publish(f"arduino/led{idx + 1}", "1" if new_state else "0")
             self.update_led_button(idx, new_state)
 
-            # 애니메이션 효과 추가 (터치 시 약간 눌렸다가 돌아오게)
-            anim = Animation(scale=0.95, duration=0.05) + Animation(scale=1, duration=0.1)
+            # Smooth animation feedback
+            instance.opacity = 0.6
+            anim = Animation(opacity=1, duration=0.15)
             anim.start(instance)
         return callback
 
