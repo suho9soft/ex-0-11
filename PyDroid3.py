@@ -6,6 +6,7 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.animation import Animation
 from datetime import datetime
 import paho.mqtt.client as mqtt
 import json
@@ -18,7 +19,7 @@ MQTT_PORT = 1883
 
 class IoTDashboard(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', padding=dp(12), spacing=dp(12), **kwargs)
+        super().__init__(orientation='vertical', padding=dp(12), spacing=dp(10), **kwargs)
 
         # 날짜/시간 표시
         self.date_label = Label(text="", font_size=sp(18), size_hint_y=None, height=dp(30))
@@ -27,9 +28,9 @@ class IoTDashboard(BoxLayout):
         self.add_widget(self.time_label)
 
         # 센서 데이터
-        self.temp_label = Label(text="🌡 온도: -- °C", font_size=sp(16), size_hint_y=None, height=dp(32))
-        self.humi_label = Label(text="💧 습도: -- %", font_size=sp(16), size_hint_y=None, height=dp(32))
-        self.pot_label = Label(text="🎛 가변저항(조도): --", font_size=sp(16), size_hint_y=None, height=dp(32))
+        self.temp_label = Label(text="🌡 온도: -- °C", font_size=sp(16), size_hint_y=None, height=dp(30))
+        self.humi_label = Label(text="💧 습도: -- %", font_size=sp(16), size_hint_y=None, height=dp(30))
+        self.pot_label = Label(text="🎛 가변저항(조도): --", font_size=sp(16), size_hint_y=None, height=dp(30))
         self.add_widget(self.temp_label)
         self.add_widget(self.humi_label)
         self.add_widget(self.pot_label)
@@ -40,17 +41,22 @@ class IoTDashboard(BoxLayout):
                                  color=(1, 0, 0, 1))
         self.add_widget(self.relay_label)
 
-        # LED 버튼
-        self.led_grid = GridLayout(cols=2, spacing=dp(10), size_hint_y=None, height=dp(220))
+        # LED 버튼 영역
+        self.led_grid = GridLayout(cols=2, spacing=dp(10), padding=dp(10), size_hint_y=None)
+        self.led_grid.bind(minimum_height=self.led_grid.setter('height'))
+
         self.led_buttons = []
         self.led_states = [False] * 8
+
         for i in range(8):
             btn = Button(
                 text=f"LED {i + 1}",
                 font_size=sp(16),
-                size_hint_y=None,
+                size_hint=(1, None),
                 height=dp(50),
-                background_color=(0.5, 0.5, 0.5, 1)
+                background_normal='',
+                background_color=(0.7, 0.7, 0.7, 1),
+                color=(0, 0, 0, 1)
             )
             btn.bind(on_press=self.make_led_callback(i))
             self.led_buttons.append(btn)
@@ -113,7 +119,7 @@ class IoTDashboard(BoxLayout):
         self.relay_label.color = (0, 1, 0, 1) if self.relay else (1, 0, 0, 1)
 
     def update_led_button(self, index, state):
-        color = (0, 1, 0, 1) if state else (0.5, 0.5, 0.5, 1)
+        color = (0.2, 1, 0.2, 1) if state else (0.7, 0.7, 0.7, 1)
         self.led_buttons[index].background_color = color
 
     def make_led_callback(self, idx):
@@ -122,6 +128,10 @@ class IoTDashboard(BoxLayout):
             self.led_states[idx] = new_state
             self.client.publish(f"arduino/led{idx + 1}", "1" if new_state else "0")
             self.update_led_button(idx, new_state)
+
+            # 애니메이션 효과 추가 (터치 시 약간 눌렸다가 돌아오게)
+            anim = Animation(scale=0.95, duration=0.05) + Animation(scale=1, duration=0.1)
+            anim.start(instance)
         return callback
 
 
