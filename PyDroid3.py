@@ -3,18 +3,15 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 import json
 
-# 전역 상태
 relay_state = False
 led_states = [False] * 8
 current_values = {"temp": 0.0, "humi": 0.0, "pot": 0}
 mqtt_connected = False
 
-# MQTT 설정
 MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
 
-# MQTT 메시지 수신 처리
 def on_message(client, userdata, msg):
     global relay_state, led_states
     topic = msg.topic
@@ -61,17 +58,17 @@ def connect_mqtt():
     except Exception as e:
         print(f"🚫 MQTT 연결 오류: {e}")
 
-# UI 갱신
 def update_ui():
     temp_label.config(text=f"🌡 온도: {current_values['temp']:.1f} °C")
     humi_label.config(text=f"💧 습도: {current_values['humi']:.1f} %")
     pot_label.config(text=f"🎛 가변저항: {current_values['pot']}")
-    relay_label.config(text=f"⚡ 릴레이: {'ON' if relay_state else 'OFF'}",
-                       fg="green" if relay_state else "red")
+    relay_label.config(
+        text=f"⚡ 릴레이: {'ON' if relay_state else 'OFF'}",
+        fg="green" if relay_state else "red"
+    )
     for i in range(8):
         led_buttons[i].config(bg="green" if led_states[i] else "gray")
 
-# 시간 표시
 def update_datetime():
     now = datetime.now()
     weekday_kor = ["월", "화", "수", "목", "금", "토", "일"]
@@ -79,44 +76,58 @@ def update_datetime():
     time_label.config(text=now.strftime("%H:%M:%S"))
     window.after(1000, update_datetime)
 
-# LED 토글
 def toggle_led(index):
     led_states[index] = not led_states[index]
     payload = "1" if led_states[index] else "0"
     client.publish(f"arduino/led{index+1}", payload)
     update_ui()
 
-# GUI 초기화
+# 윈도우 및 스크롤 생성
 window = tk.Tk()
-window.title("ESP32 실시간 센서 모니터")
-window.geometry("520x550")
-window.resizable(False, False)
+window.title("ESP32 센서 모니터")
+window.geometry("360x640")
+window.resizable(True, True)
+
+canvas = tk.Canvas(window)
+scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
+scrollable_frame = tk.Frame(canvas)
+
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+)
+
+canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.configure(yscrollcommand=scrollbar.set)
+
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
 
 # 날짜/시간
-date_label = tk.Label(window, text="", font=("맑은 고딕", 12))
+date_label = tk.Label(scrollable_frame, text="", font=("맑은 고딕", 12))
 date_label.pack(pady=5)
-time_label = tk.Label(window, text="", font=("맑은 고딕", 12))
+time_label = tk.Label(scrollable_frame, text="", font=("맑은 고딕", 12))
 time_label.pack(pady=5)
 
-# 센서 정보
-sensor_frame = tk.Frame(window)
+# 센서
+sensor_frame = tk.Frame(scrollable_frame)
 sensor_frame.pack(pady=10)
 
-temp_label = tk.Label(sensor_frame, text="온도: -- °C", font=("맑은 고딕", 14))
+temp_label = tk.Label(sensor_frame, text="🌡 온도: -- °C", font=("맑은 고딕", 14))
 temp_label.grid(row=0, column=0, padx=10, pady=5)
 
-humi_label = tk.Label(sensor_frame, text="습도: -- %", font=("맑은 고딕", 14))
+humi_label = tk.Label(sensor_frame, text="💧 습도: -- %", font=("맑은 고딕", 14))
 humi_label.grid(row=0, column=1, padx=10, pady=5)
 
-pot_label = tk.Label(sensor_frame, text="가변저항: --", font=("맑은 고딕", 14))
+pot_label = tk.Label(sensor_frame, text="🎛 가변저항: --", font=("맑은 고딕", 14))
 pot_label.grid(row=1, column=0, columnspan=2, pady=5)
 
-# 릴레이 상태
-relay_label = tk.Label(window, text="릴레이: OFF", font=("맑은 고딕", 14), fg="red")
+# 릴레이
+relay_label = tk.Label(scrollable_frame, text="⚡ 릴레이: OFF", font=("맑은 고딕", 14), fg="red")
 relay_label.pack(pady=10)
 
-# LED 버튼들
-led_frame = tk.LabelFrame(window, text="LED 제어 (GPIO)", font=("맑은 고딕", 12))
+# LED 버튼
+led_frame = tk.LabelFrame(scrollable_frame, text="LED 제어 (GPIO)", font=("맑은 고딕", 12))
 led_frame.pack(pady=10)
 
 led_buttons = []
@@ -124,8 +135,9 @@ for i in range(8):
     btn = tk.Button(
         led_frame,
         text=f"LED {i+1}",
-        width=12, height=3,
+        width=10, height=2,
         bg="gray",
+        font=("맑은 고딕", 10),
         command=lambda idx=i: toggle_led(idx)
     )
     btn.grid(row=i // 4, column=i % 4, padx=5, pady=5)
@@ -135,4 +147,3 @@ for i in range(8):
 connect_mqtt()
 update_datetime()
 window.mainloop()
-
