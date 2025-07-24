@@ -103,7 +103,7 @@ def mjpeg_stream():
                     jpg = byte_data[a:b + 2]
                     byte_data = byte_data[b + 2:]
                     img = Image.open(BytesIO(jpg)).convert('RGB')
-                    img = img.resize((480, int(480 * img.height / img.width)))  # 크기 조절
+                    img = img.resize((480, int(480 * img.height / img.width)))
                     imgtk = ImageTk.PhotoImage(img)
                     def update_img():
                         camera_label.config(image=imgtk)
@@ -124,7 +124,7 @@ window.configure(bg="white")
 left_frame = tk.Frame(window, bg="white")
 left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-tk.Label(left_frame, text="📷 ESP32 카메라", font=("맑은 고딕", 14, "bold"), bg="white").pack()
+tk.Label(left_frame, text="📷 ESP32 카메라", font=("맑은 고딕", 12, "bold"), bg="white").pack()
 camera_label = tk.Label(left_frame, bg="black")
 camera_label.pack(pady=10)
 
@@ -135,7 +135,7 @@ led_buttons_frame.pack(pady=10)
 led_buttons = []
 for i in range(8):
     btn = tk.Button(led_buttons_frame, text=f"LED {i+1}",
-                    width=5, height=1, font=("맑은 고딕", 10),
+                    width=5, height=1, font=("맑은 고딕", 9),
                     bg="light gray", command=lambda i=i: toggle_led(i))
     btn.grid(row=i//4, column=i%4, padx=3, pady=3)
     led_buttons.append(btn)
@@ -144,25 +144,25 @@ for i in range(8):
 right_frame = tk.Frame(window, bg="white", width=250)
 right_frame.pack(side="right", fill="y", padx=10, pady=10)
 
-date_label = tk.Label(right_frame, text="", font=("맑은 고딕", 12), bg="white")
+date_label = tk.Label(right_frame, text="", font=("맑은 고딕", 10), bg="white")
 date_label.pack(pady=(20,5))
 
-time_label = tk.Label(right_frame, text="", font=("맑은 고딕", 12), bg="white")
+time_label = tk.Label(right_frame, text="", font=("맑은 고딕", 10), bg="white")
 time_label.pack(pady=(0,20))
 
-temp_label = tk.Label(right_frame, text="🌡 온도", font=("맑은 고딕", 11), bg="white")
+temp_label = tk.Label(right_frame, text="🌡 온도", font=("맑은 고딕", 10), bg="white")
 temp_label.pack(pady=6)
 
-humi_label = tk.Label(right_frame, text="💧 습도", font=("맑은 고딕", 11), bg="white")
+humi_label = tk.Label(right_frame, text="💧 습도", font=("맑은 고딕", 10), bg="white")
 humi_label.pack(pady=6)
 
-pot_label = tk.Label(right_frame, text="🎛 가변저항", font=("맑은 고딕", 11), bg="white")
+pot_label = tk.Label(right_frame, text="🎛 가변저항", font=("맑은 고딕", 10), bg="white")
 pot_label.pack(pady=6)
 
-relay_label = tk.Label(right_frame, text="⚡ 릴레이", font=("맑은 고딕", 11), bg="white", fg="red")
+relay_label = tk.Label(right_frame, text="⚡ 릴레이", font=("맑은 고딕", 10), bg="white", fg="red")
 relay_label.pack(pady=6)
 
-# 시작
+# 실행
 connect_mqtt()
 update_datetime()
 threading.Thread(target=mjpeg_stream, daemon=True).start()
