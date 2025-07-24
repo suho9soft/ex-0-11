@@ -93,7 +93,7 @@ def mjpeg_stream():
                     jpg = byte_data[a:b + 2]
                     byte_data = byte_data[b + 2:]
                     img = Image.open(BytesIO(jpg)).convert('RGB')
-                    img = img.resize((480, 360))  # 크기 확대
+                    img = img.resize((640, 480))  # 🎥 아주 크게 확대
                     imgtk = ImageTk.PhotoImage(img)
                     def update_img():
                         camera_label.config(image=imgtk)
@@ -107,7 +107,7 @@ def mjpeg_stream():
 # GUI 구성
 window = tk.Tk()
 window.title("ESP32 센서 및 카메라 모니터")
-window.geometry("1000x650")
+window.geometry("1100x700")
 window.configure(bg="white")
 
 # 왼쪽 프레임
@@ -115,10 +115,10 @@ left_frame = tk.Frame(window, bg="white")
 left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
 tk.Label(left_frame, text="ESP32 카메라 화면", font=("맑은 고딕", 13, "bold"), bg="white").pack()
-camera_label = tk.Label(left_frame, bg="black", width=480, height=360)
+camera_label = tk.Label(left_frame, bg="black", width=640, height=480)  # ⬆ 확대된 화면
 camera_label.pack(pady=10)
 
-# LED 버튼 (카메라 아래쪽으로 이동)
+# LED 버튼 (아래쪽으로 배치)
 led_buttons_frame = tk.Frame(left_frame, bg="white")
 led_buttons_frame.pack(pady=10)
 led_buttons = []
