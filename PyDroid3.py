@@ -19,7 +19,6 @@ MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
 
-# MQTT 콜백
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         client.subscribe("arduino/input")
@@ -76,7 +75,6 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", "1" if led_states[index] else "0")
     update_ui()
 
-# 카메라 스트리밍
 CAMERA_URL = "http://172.30.1.60:81/stream"
 
 def mjpeg_stream():
@@ -95,7 +93,7 @@ def mjpeg_stream():
                     jpg = byte_data[a:b + 2]
                     byte_data = byte_data[b + 2:]
                     img = Image.open(BytesIO(jpg)).convert('RGB')
-                    img = img.resize((320, 240))
+                    img = img.resize((400, 300))  # 📸 더 크게
                     imgtk = ImageTk.PhotoImage(img)
                     def update_img():
                         camera_label.config(image=imgtk)
@@ -117,7 +115,7 @@ left_frame = tk.Frame(window, bg="white")
 left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
 tk.Label(left_frame, text="ESP32 카메라 화면", font=("맑은 고딕", 13, "bold"), bg="white").pack()
-camera_label = tk.Label(left_frame, bg="black", width=320, height=240)
+camera_label = tk.Label(left_frame, bg="black", width=400, height=300)  # 사이즈 업
 camera_label.pack(pady=10)
 
 # LED 버튼
@@ -128,8 +126,7 @@ for i in range(8):
     btn = tk.Button(
         led_buttons_frame,
         text=f"LED {i+1}",
-        width=8,
-        height=2,
+        width=6, height=1,  # 👇 조금 더 컴팩트
         font=("맑은 고딕", 10, "bold"),
         bg="light gray",
         fg="black",
