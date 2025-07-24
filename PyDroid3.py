@@ -98,7 +98,8 @@ def mjpeg_stream():
                     jpg = byte_data[a:b + 2]
                     byte_data = byte_data[b + 2:]
                     img = Image.open(BytesIO(jpg)).convert('RGB')
-                    img = img.resize((640, int(640 * img.height / img.width)))  # 카메라 크기 (가로 640)
+                    # 카메라 크기 가로 480으로 줄임
+                    img = img.resize((480, int(480 * img.height / img.width)))
                     imgtk = ImageTk.PhotoImage(img)
                     def update_img():
                         camera_label.config(image=imgtk)
@@ -130,9 +131,9 @@ led_buttons_frame.pack(pady=10)
 
 led_buttons = []
 for i in range(8):
-    btn = tk.Button(led_buttons_frame, text=f"LED {i+1}", width=8, height=2,
+    btn = tk.Button(led_buttons_frame, text=f"LED {i+1}", width=5, height=1,
                     bg="light gray", command=lambda i=i: toggle_led(i))
-    btn.grid(row=i//4, column=i%4, padx=5, pady=5)
+    btn.grid(row=i//4, column=i%4, padx=4, pady=4)
     led_buttons.append(btn)
 
 # 오른쪽: 상태 표시
