@@ -20,6 +20,7 @@ MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
 
+# MQTT 연결
 def on_connect(client, userdata, flags, rc):
     global mqtt_connected
     if rc == 0:
@@ -31,6 +32,7 @@ def on_connect(client, userdata, flags, rc):
     else:
         print("❌ MQTT 연결 실패:", rc)
 
+# MQTT 메시지 처리
 def on_message(client, userdata, msg):
     global relay_state
     try:
@@ -80,6 +82,7 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", "1" if led_states[index] else "0")
     update_ui()
 
+# 카메라 URL
 CAMERA_URL = "http://172.30.1.60:81/stream"
 
 def mjpeg_stream():
@@ -98,7 +101,7 @@ def mjpeg_stream():
                     jpg = byte_data[a:b + 2]
                     byte_data = byte_data[b + 2:]
                     img = Image.open(BytesIO(jpg)).convert('RGB')
-                    # 카메라 크기 가로 480으로 줄임
+                    # 카메라 크기 가로 480
                     img = img.resize((480, int(480 * img.height / img.width)))
                     imgtk = ImageTk.PhotoImage(img)
                     def update_img():
@@ -110,55 +113,56 @@ def mjpeg_stream():
             print("📷 카메라 에러:", e)
             time.sleep(1)
 
-# GUI 생성
+# --- GUI 구성 ---
 window = tk.Tk()
 window.title("ESP32 센서 및 카메라 모니터")
 window.geometry("1000x600")
 window.configure(bg="white")
 
-# 왼쪽: 카메라 + 버튼
+# 왼쪽: 카메라와 버튼
 left_frame = tk.Frame(window, bg="white")
 left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-camera_title = tk.Label(left_frame, text="📷 ESP32 카메라 영상", font=("맑은 고딕", 16, "bold"), bg="white")
+camera_title = tk.Label(left_frame, text="📷 ESP32 카메라 영상", font=("맑은 고딕", 14, "bold"), bg="white")
 camera_title.pack()
 
 camera_label = tk.Label(left_frame, bg="black")
 camera_label.pack(pady=10)
 
+# LED 버튼들
 led_buttons_frame = tk.Frame(left_frame, bg="white")
 led_buttons_frame.pack(pady=10)
 
 led_buttons = []
 for i in range(8):
-    btn = tk.Button(led_buttons_frame, text=f"LED {i+1}", width=5, height=1,
-                    bg="light gray", command=lambda i=i: toggle_led(i))
+    btn = tk.Button(led_buttons_frame, text=f"LED {i+1}", width=6, height=1,
+                    font=("맑은 고딕", 11), bg="light gray", command=lambda i=i: toggle_led(i))
     btn.grid(row=i//4, column=i%4, padx=4, pady=4)
     led_buttons.append(btn)
 
-# 오른쪽: 상태 표시
+# 오른쪽: 센서 상태 및 날짜/시간
 right_frame = tk.Frame(window, bg="white", width=250)
 right_frame.pack(side="right", fill="y", padx=10, pady=10)
 
-date_label = tk.Label(right_frame, text="", font=("맑은 고딕", 14), bg="white")
+date_label = tk.Label(right_frame, text="", font=("맑은 고딕", 13), bg="white")
 date_label.pack(pady=(20,5))
 
-time_label = tk.Label(right_frame, text="", font=("맑은 고딕", 14), bg="white")
+time_label = tk.Label(right_frame, text="", font=("맑은 고딕", 13), bg="white")
 time_label.pack(pady=(0,20))
 
-temp_label = tk.Label(right_frame, text="🌡 온도", font=("맑은 고딕", 14), bg="white")
+temp_label = tk.Label(right_frame, text="🌡 온도", font=("맑은 고딕", 12), bg="white")
 temp_label.pack(pady=8)
 
-humi_label = tk.Label(right_frame, text="💧 습도", font=("맑은 고딕", 14), bg="white")
+humi_label = tk.Label(right_frame, text="💧 습도", font=("맑은 고딕", 12), bg="white")
 humi_label.pack(pady=8)
 
-pot_label = tk.Label(right_frame, text="🎛 가변저항", font=("맑은 고딕", 14), bg="white")
+pot_label = tk.Label(right_frame, text="🎛 가변저항", font=("맑은 고딕", 12), bg="white")
 pot_label.pack(pady=8)
 
-relay_label = tk.Label(right_frame, text="⚡ 릴레이", font=("맑은 고딕", 14), bg="white", fg="red")
+relay_label = tk.Label(right_frame, text="⚡ 릴레이", font=("맑은 고딕", 12), bg="white", fg="red")
 relay_label.pack(pady=8)
 
-# MQTT 및 타이머 시작
+# 시작
 connect_mqtt()
 update_datetime()
 threading.Thread(target=mjpeg_stream, daemon=True).start()
