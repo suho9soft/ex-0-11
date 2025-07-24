@@ -2,22 +2,23 @@ import tkinter as tk
 from datetime import datetime
 import paho.mqtt.client as mqtt
 import json
-import cv2
-from PIL import Image, ImageTk
 import threading
+import requests
+from PIL import Image, ImageTk
+from io import BytesIO
 
-# ==== 상태 변수 ====
+# === 상태 변수 ===
 relay_state = False
 led_states = [False] * 8
 current_values = {"temp": 0.0, "humi": 0.0, "pot": 0}
 mqtt_connected = False
 
-# ==== MQTT 설정 ====
+# === MQTT 설정 ===
 MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
 
-# ==== MQTT 콜백 ====
+# === MQTT 콜백 함수 ===
 def on_connect(client, userdata, flags, rc):
     global mqtt_connected
     if rc == 0:
@@ -65,7 +66,7 @@ def connect_mqtt():
     except Exception as e:
         print(f"🚫 MQTT 연결 중 오류 발생: {e}")
 
-# ==== UI 업데이트 ====
+# === UI 업데이트 함수 ===
 def update_ui():
     temp_label.config(text=f"🌡 온도: {current_values['temp']:.1f} °C")
     humi_label.config(text=f"💧 습도: {current_values['humi']:.1f} %")
@@ -90,25 +91,37 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", payload)
     update_ui()
 
-# ==== 카메라 스트림 ====
+# === MJPEG 스트림을 직접 읽어 Tkinter에 띄우기 ===
 CAMERA_URL = "http://172.30.1.60:81/stream"
-cap = cv2.VideoCapture(CAMERA_URL)
+stop_camera = False
 
-def update_camera():
+def mjpeg_stream():
+    global stop_camera
     try:
-        ret, frame = cap.read()
-        if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(frame)
-            img = img.resize((320, 240))
-            imgtk = ImageTk.PhotoImage(image=img)
-            camera_label.imgtk = imgtk
-            camera_label.config(image=imgtk)
+        stream = requests.get(CAMERA_URL, stream=True, timeout=5)
+        bytes_data = b""
+        for chunk in stream.iter_content(chunk_size=1024):
+            if stop_camera:
+                break
+            bytes_data += chunk
+            a = bytes_data.find(b'\xff\xd8')  # JPEG start
+            b = bytes_data.find(b'\xff\xd9')  # JPEG end
+            if a != -1 and b != -1 and b > a:
+                jpg = bytes_data[a:b+2]
+                bytes_data = bytes_data[b+2:]
+                try:
+                    img = Image.open(BytesIO(jpg))
+                    img = img.resize((320, 240))
+                    imgtk = ImageTk.PhotoImage(image=img)
+                    # Tkinter 메인 스레드에서 이미지 업데이트
+                    camera_label.imgtk = imgtk
+                    camera_label.config(image=imgtk)
+                except Exception as e:
+                    print(f"이미지 변환 오류: {e}")
     except Exception as e:
-        print(f"카메라 오류: {e}")
-    window.after(100, update_camera)
+        print(f"스트림 연결 오류: {e}")
 
-# ==== GUI 구성 ====
+# === GUI 설정 ===
 window = tk.Tk()
 window.title("ESP32 센서 모니터 + 카메라")
 window.geometry("380x700")
@@ -119,19 +132,22 @@ canvas = tk.Canvas(window)
 scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
 scrollable_frame = tk.Frame(canvas)
 
-scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+)
 canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar.set)
 
 canvas.pack(side="left", fill="both", expand=True)
 scrollbar.pack(side="right", fill="y")
 
-# ==== 카메라 프레임 ====
+# 카메라 프레임
 tk.Label(scrollable_frame, text="📷 ESP32 카메라", font=("맑은 고딕", 13, "bold")).pack(pady=5)
 camera_label = tk.Label(scrollable_frame)
 camera_label.pack(pady=10)
 
-# ==== LED 버튼 ====
+# LED 버튼 8개
 led_buttons = []
 led_layout = [3, 3, 2]
 btn_index = 0
@@ -156,30 +172,34 @@ for row, count in enumerate(led_layout):
         led_buttons.append(btn)
         btn_index += 1
 
-# ==== 날짜 및 시간 ====
+# 날짜 및 시간
 date_label = tk.Label(scrollable_frame, text="날짜", font=("맑은 고딕", 12))
 date_label.pack(pady=4)
-
 time_label = tk.Label(scrollable_frame, text="시간", font=("맑은 고딕", 12))
 time_label.pack(pady=4)
 
-# ==== 센서 데이터 ====
+# 센서 데이터
 temp_label = tk.Label(scrollable_frame, text="🌡 온도: -- °C", font=("맑은 고딕", 14))
 temp_label.pack(pady=4)
-
 humi_label = tk.Label(scrollable_frame, text="💧 습도: -- %", font=("맑은 고딕", 14))
 humi_label.pack(pady=4)
-
 pot_label = tk.Label(scrollable_frame, text="🎛 가변저항: --", font=("맑은 고딕", 14))
 pot_label.pack(pady=4)
 
-# ==== 릴레이 상태 ====
+# 릴레이 상태
 relay_label = tk.Label(scrollable_frame, text="⚡ 릴레이 상태: OFF", font=("맑은 고딕", 14), fg="red")
 relay_label.pack(pady=10)
 
-# ==== 실행 ====
+# === 프로그램 시작 ===
 connect_mqtt()
 update_datetime()
-update_camera()
 
+# MJPEG 스트림 별도 쓰레드로 실행 (메인 UI 차단 방지)
+camera_thread = threading.Thread(target=mjpeg_stream, daemon=True)
+camera_thread.start()
+
+# Tkinter 메인 루프
 window.mainloop()
+
+# 종료 시 카메라 스트림 중단
+stop_camera = True
