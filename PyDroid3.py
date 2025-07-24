@@ -54,11 +54,11 @@ def connect_mqtt():
     client.loop_start()
 
 def update_ui():
-    temp_label.config(text=f"🌡 온도\n{current_values['temp']:.1f} °C")
-    humi_label.config(text=f"💧 습도\n{current_values['humi']:.1f} %")
-    pot_label.config(text=f"🎛 가변저항\n{current_values['pot']}")
+    temp_label.config(text=f"온도\n{current_values['temp']:.1f} °C")
+    humi_label.config(text=f"습도\n{current_values['humi']:.1f} %")
+    pot_label.config(text=f"가변저항\n{current_values['pot']}")
     relay_label.config(
-        text=f"⚡ 릴레이\n{'ON' if relay_state else 'OFF'}",
+        text=f"릴레이 상태\n{'ON' if relay_state else 'OFF'}",
         fg="green" if relay_state else "red"
     )
     for i in range(8):
@@ -116,7 +116,7 @@ window.configure(bg="white")
 left_frame = tk.Frame(window, bg="white")
 left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-tk.Label(left_frame, text="📷 ESP32 카메라", font=("맑은 고딕", 13, "bold"), bg="white").pack()
+tk.Label(left_frame, text="ESP32 카메라 화면", font=("맑은 고딕", 13, "bold"), bg="white").pack()
 camera_label = tk.Label(left_frame, bg="black")
 camera_label.pack(pady=10)
 
@@ -141,16 +141,16 @@ date_label.pack(pady=(20,5))
 time_label = tk.Label(right_frame, text="", font=("맑은 고딕", 11), bg="white")
 time_label.pack(pady=(0,20))
 
-temp_label = tk.Label(right_frame, text="🌡 온도", font=("맑은 고딕", 11), bg="white")
+temp_label = tk.Label(right_frame, text="온도", font=("맑은 고딕", 11), bg="white")
 temp_label.pack(pady=6)
 
-humi_label = tk.Label(right_frame, text="💧 습도", font=("맑은 고딕", 11), bg="white")
+humi_label = tk.Label(right_frame, text="습도", font=("맑은 고딕", 11), bg="white")
 humi_label.pack(pady=6)
 
-pot_label = tk.Label(right_frame, text="🎛 가변저항", font=("맑은 고딕", 11), bg="white")
+pot_label = tk.Label(right_frame, text="가변저항", font=("맑은 고딕", 11), bg="white")
 pot_label.pack(pady=6)
 
-relay_label = tk.Label(right_frame, text="⚡ 릴레이", font=("맑은 고딕", 11), bg="white", fg="red")
+relay_label = tk.Label(right_frame, text="릴레이 상태", font=("맑은 고딕", 11), bg="white", fg="red")
 relay_label.pack(pady=6)
 
 # 실행
