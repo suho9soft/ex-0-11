@@ -7,18 +7,20 @@ import requests
 from PIL import Image, ImageTk
 from io import BytesIO
 
-# === 상태 변수 ===
+# --- 상태 변수 ---
 relay_state = False
 led_states = [False] * 8
 current_values = {"temp": 0.0, "humi": 0.0, "pot": 0}
 mqtt_connected = False
+latest_img_width = 320
+latest_img_height = 240
 
-# === MQTT 설정 ===
+# --- MQTT 설정 ---
 MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
 
-# === MQTT 콜백 함수 ===
+# --- MQTT 콜백 함수 ---
 def on_connect(client, userdata, flags, rc):
     global mqtt_connected
     if rc == 0:
@@ -66,7 +68,7 @@ def connect_mqtt():
     except Exception as e:
         print(f"🚫 MQTT 연결 중 오류 발생: {e}")
 
-# === UI 업데이트 함수 ===
+# --- UI 업데이트 함수 ---
 def update_ui():
     temp_label.config(text=f"🌡 온도: {current_values['temp']:.1f} °C")
     humi_label.config(text=f"💧 습도: {current_values['humi']:.1f} %")
@@ -91,12 +93,12 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", payload)
     update_ui()
 
-# === MJPEG 스트림을 직접 읽어 Tkinter에 띄우기 ===
+# --- MJPEG 스트림 읽기 ---
 CAMERA_URL = "http://172.30.1.60:81/stream"
 stop_camera = False
 
 def mjpeg_stream():
-    global stop_camera
+    global stop_camera, latest_img_width, latest_img_height
     try:
         stream = requests.get(CAMERA_URL, stream=True, timeout=5)
         bytes_data = b""
@@ -104,54 +106,96 @@ def mjpeg_stream():
             if stop_camera:
                 break
             bytes_data += chunk
-            a = bytes_data.find(b'\xff\xd8')  # JPEG start
-            b = bytes_data.find(b'\xff\xd9')  # JPEG end
+            a = bytes_data.find(b'\xff\xd8')
+            b = bytes_data.find(b'\xff\xd9')
             if a != -1 and b != -1 and b > a:
                 jpg = bytes_data[a:b+2]
                 bytes_data = bytes_data[b+2:]
                 try:
                     img = Image.open(BytesIO(jpg))
-                    img = img.resize((320, 240))
+                    # 원본 크기 저장
+                    latest_img_width, latest_img_height = img.size
+                    # 사이즈 조절 (최대 320px 너비 기준, 비율 유지)
+                    max_width = 320
+                    ratio = max_width / latest_img_width
+                    new_w = int(latest_img_width * ratio)
+                    new_h = int(latest_img_height * ratio)
+                    img = img.resize((new_w, new_h))
                     imgtk = ImageTk.PhotoImage(image=img)
-                    # Tkinter 메인 스레드에서 이미지 업데이트
-                    camera_label.imgtk = imgtk
-                    camera_label.config(image=imgtk)
+
+                    # 메인 스레드에서 GUI 업데이트
+                    def update_img():
+                        camera_label.imgtk = imgtk
+                        camera_label.config(image=imgtk)
+                        adjust_layout()
+
+                    window.after(0, update_img)
+
                 except Exception as e:
                     print(f"이미지 변환 오류: {e}")
     except Exception as e:
         print(f"스트림 연결 오류: {e}")
 
-# === GUI 설정 ===
+# --- 레이아웃 조정 함수 ---
+def adjust_layout():
+    # 비율 판단 (가로/세로)
+    if latest_img_width == 0 or latest_img_height == 0:
+        return  # 이미지 없으면 건너뜀
+
+    ratio = latest_img_width / latest_img_height
+    if ratio > 1:  
+        # 가로 모드: 영상 왼쪽, 센서UI 오른쪽 (좌우 배치)
+        if not layout_frame.winfo_ismapped():
+            layout_frame.pack_forget()
+            layout_frame.pack(fill="both", expand=True)
+        camera_label.pack_forget()
+        control_frame.pack_forget()
+
+        main_container.pack_forget()
+        main_container.pack(fill="both", expand=True)
+
+        camera_label.pack(side="left", padx=10, pady=10)
+        control_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+    else:
+        # 세로 모드: 영상 위, 센서UI 아래 (상하 배치)
+        if not layout_frame.winfo_ismapped():
+            layout_frame.pack_forget()
+            layout_frame.pack(fill="both", expand=True)
+        camera_label.pack_forget()
+        control_frame.pack_forget()
+
+        main_container.pack_forget()
+        main_container.pack(fill="both", expand=True)
+
+        camera_label.pack(side="top", padx=10, pady=10)
+        control_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)
+
+# --- GUI 세팅 ---
 window = tk.Tk()
-window.title("ESP32 센서 모니터 + 카메라")
-window.geometry("380x700")
-window.resizable(False, False)
+window.title("ESP32 센서 모니터 + 카메라 (가로/세로 모드 자동)")
+window.geometry("600x700")
+window.resizable(True, True)
 
-# 스크롤 가능한 프레임
-canvas = tk.Canvas(window)
-scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
-scrollable_frame = tk.Frame(canvas)
+# 메인 컨테이너 프레임
+main_container = tk.Frame(window)
+main_container.pack(fill="both", expand=True)
 
-scrollable_frame.bind(
-    "<Configure>",
-    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-)
-canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-canvas.configure(yscrollcommand=scrollbar.set)
+# 내부 레이아웃 조정을 위한 프레임 (이걸로 가로/세로 레이아웃 조정)
+layout_frame = tk.Frame(main_container)
+layout_frame.pack(fill="both", expand=True)
 
-canvas.pack(side="left", fill="both", expand=True)
-scrollbar.pack(side="right", fill="y")
+# 카메라 라벨 (영상 표시)
+camera_label = tk.Label(layout_frame)
 
-# 카메라 프레임
-tk.Label(scrollable_frame, text="📷 ESP32 카메라", font=("맑은 고딕", 13, "bold")).pack(pady=5)
-camera_label = tk.Label(scrollable_frame)
-camera_label.pack(pady=10)
+# 센서 + 버튼 UI 프레임 (control_frame)
+control_frame = tk.Frame(layout_frame)
 
 # LED 버튼 8개
 led_buttons = []
 led_layout = [3, 3, 2]
 btn_index = 0
-led_frame = tk.Frame(scrollable_frame)
+led_frame = tk.Frame(control_frame)
 led_frame.pack(pady=10)
 
 for row, count in enumerate(led_layout):
@@ -173,33 +217,14 @@ for row, count in enumerate(led_layout):
         btn_index += 1
 
 # 날짜 및 시간
-date_label = tk.Label(scrollable_frame, text="날짜", font=("맑은 고딕", 12))
+date_label = tk.Label(control_frame, text="날짜", font=("맑은 고딕", 12))
 date_label.pack(pady=4)
-time_label = tk.Label(scrollable_frame, text="시간", font=("맑은 고딕", 12))
+time_label = tk.Label(control_frame, text="시간", font=("맑은 고딕", 12))
 time_label.pack(pady=4)
 
 # 센서 데이터
-temp_label = tk.Label(scrollable_frame, text="🌡 온도: -- °C", font=("맑은 고딕", 14))
+temp_label = tk.Label(control_frame, text="🌡 온도: -- °C", font=("맑은 고딕", 14))
 temp_label.pack(pady=4)
-humi_label = tk.Label(scrollable_frame, text="💧 습도: -- %", font=("맑은 고딕", 14))
+humi_label = tk.Label(control_frame, text="💧 습도: -- %", font=("맑은 고딕", 14))
 humi_label.pack(pady=4)
-pot_label = tk.Label(scrollable_frame, text="🎛 가변저항: --", font=("맑은 고딕", 14))
-pot_label.pack(pady=4)
-
-# 릴레이 상태
-relay_label = tk.Label(scrollable_frame, text="⚡ 릴레이 상태: OFF", font=("맑은 고딕", 14), fg="red")
-relay_label.pack(pady=10)
-
-# === 프로그램 시작 ===
-connect_mqtt()
-update_datetime()
-
-# MJPEG 스트림 별도 쓰레드로 실행 (메인 UI 차단 방지)
-camera_thread = threading.Thread(target=mjpeg_stream, daemon=True)
-camera_thread.start()
-
-# Tkinter 메인 루프
-window.mainloop()
-
-# 종료 시 카메라 스트림 중단
-stop_camera = True
+pot_label = tk.Label(control_frame, text="🎛 가
