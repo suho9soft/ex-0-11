@@ -12,31 +12,6 @@ MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 client = mqtt.Client()
 
-def on_message(client, userdata, msg):
-    global relay_state, led_states
-    topic = msg.topic
-    payload = msg.payload.decode()
-
-    if topic == "arduino/input":
-        try:
-            data = json.loads(payload)
-            current_values["temp"] = float(data.get("temp", 0.0))
-            current_values["humi"] = float(data.get("humi", 0.0))
-            current_values["pot"] = int(data.get("pot", 0))
-            relay_state = bool(data.get("relay", False))
-        except Exception as e:
-            print(f"❌ JSON 파싱 실패: {e}")
-
-    elif topic == "arduino/output":
-        relay_state = (payload.lower() == "post 3200 on")
-
-    else:
-        for i in range(8):
-            if topic == f"arduino/led{i+1}":
-                led_states[i] = (payload == "1")
-
-    update_ui()
-
 def on_connect(client, userdata, flags, rc):
     global mqtt_connected
     if rc == 0:
@@ -49,9 +24,35 @@ def on_connect(client, userdata, flags, rc):
     else:
         print(f"❌ MQTT 연결 실패: {rc}")
 
+def on_message(client, userdata, msg):
+    global relay_state
+    topic = msg.topic
+    payload = msg.payload.decode()
+
+    try:
+        if topic == "arduino/input":
+            data = json.loads(payload)
+            current_values["temp"] = float(data.get("temp", 0.0))
+            current_values["humi"] = float(data.get("humi", 0.0))
+            current_values["pot"] = int(data.get("pot", 0))
+            relay_state = bool(data.get("relay", False))
+
+        elif topic == "arduino/output":
+            relay_state = (payload.lower() == "post 3200 on")
+
+        elif topic.startswith("arduino/led"):
+            index = int(topic.replace("arduino/led", "")) - 1
+            if 0 <= index < 8:
+                led_states[index] = (payload == "1")
+
+        update_ui()
+
+    except Exception as e:
+        print(f"❌ 메시지 처리 오류: {e}")
+
 def connect_mqtt():
-    client.on_message = on_message
     client.on_connect = on_connect
+    client.on_message = on_message
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
         client.loop_start()
@@ -67,7 +68,9 @@ def update_ui():
         fg="green" if relay_state else "red"
     )
     for i in range(8):
-        led_buttons[i].config(bg="green" if led_states[i] else "gray")
+        new_color = "green" if led_states[i] else "gray"
+        if led_buttons[i].cget("bg") != new_color:
+            led_buttons[i].config(bg=new_color)
 
 def update_datetime():
     now = datetime.now()
@@ -82,7 +85,7 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", payload)
     update_ui()
 
-# 윈도우 및 스크롤 생성
+# --- GUI 시작 ---
 window = tk.Tk()
 window.title("ESP32 센서 모니터")
 window.geometry("360x640")
@@ -92,11 +95,7 @@ canvas = tk.Canvas(window)
 scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
 scrollable_frame = tk.Frame(canvas)
 
-scrollable_frame.bind(
-    "<Configure>",
-    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-)
-
+scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -109,7 +108,7 @@ date_label.pack(pady=5)
 time_label = tk.Label(scrollable_frame, text="", font=("맑은 고딕", 12))
 time_label.pack(pady=5)
 
-# 센서
+# 센서 정보
 sensor_frame = tk.Frame(scrollable_frame)
 sensor_frame.pack(pady=10)
 
@@ -122,11 +121,11 @@ humi_label.grid(row=0, column=1, padx=10, pady=5)
 pot_label = tk.Label(sensor_frame, text="🎛 가변저항: --", font=("맑은 고딕", 14))
 pot_label.grid(row=1, column=0, columnspan=2, pady=5)
 
-# 릴레이
+# 릴레이 상태
 relay_label = tk.Label(scrollable_frame, text="⚡ 릴레이: OFF", font=("맑은 고딕", 14), fg="red")
 relay_label.pack(pady=10)
 
-# LED 버튼
+# LED 제어 버튼
 led_frame = tk.LabelFrame(scrollable_frame, text="LED 제어 (GPIO)", font=("맑은 고딕", 12))
 led_frame.pack(pady=10)
 
@@ -143,7 +142,7 @@ for i in range(8):
     btn.grid(row=i // 4, column=i % 4, padx=5, pady=5)
     led_buttons.append(btn)
 
-# 시작
+# 실행
 connect_mqtt()
 update_datetime()
 window.mainloop()
