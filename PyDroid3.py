@@ -27,7 +27,7 @@ def on_connect(client, userdata, flags, rc):
     else:
         print(f"❌ MQTT 연결 실패 - 반환 코드: {rc}")
 
-# 메시지 수신 콜백
+# MQTT 메시지 수신
 def on_message(client, userdata, msg):
     global relay_state
     topic = msg.topic
@@ -54,7 +54,7 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print(f"❌ 메시지 처리 오류: {e}")
 
-# MQTT 연결 시작
+# MQTT 연결 시도
 def connect_mqtt():
     client.on_connect = on_connect
     client.on_message = on_message
@@ -74,9 +74,9 @@ def update_ui():
         fg="green" if relay_state else "red"
     )
     for i in range(8):
-        led_buttons[i].config(bg="green" if led_states[i] else "gray")
+        led_buttons[i].config(bg="green" if led_states[i] else "light gray")
 
-# 날짜/시간 갱신
+# 시간 갱신
 def update_datetime():
     now = datetime.now()
     weekday_kor = ["월", "화", "수", "목", "금", "토", "일"]
@@ -91,12 +91,13 @@ def toggle_led(index):
     client.publish(f"arduino/led{index+1}", payload)
     update_ui()
 
-# --- GUI 구성 시작 ---
+# --- GUI 구성 ---
 window = tk.Tk()
 window.title("ESP32 센서 모니터")
 window.geometry("360x640")
-window.resizable(True, True)
+window.resizable(False, False)
 
+# 전체 프레임 + 스크롤
 canvas = tk.Canvas(window)
 scrollbar = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
 scrollable_frame = tk.Frame(canvas)
@@ -108,34 +109,13 @@ canvas.configure(yscrollcommand=scrollbar.set)
 canvas.pack(side="left", fill="both", expand=True)
 scrollbar.pack(side="right", fill="y")
 
-# 날짜와 시간
-date_label = tk.Label(scrollable_frame, text="", font=("맑은 고딕", 12))
-date_label.pack(pady=5)
-
-time_label = tk.Label(scrollable_frame, text="", font=("맑은 고딕", 12))
-time_label.pack(pady=5)
-
-# 센서 값들 (온도 → 습도 → 가변저항)
-temp_label = tk.Label(scrollable_frame, text="🌡 온도: -- °C", font=("맑은 고딕", 14))
-temp_label.pack(pady=5)
-
-humi_label = tk.Label(scrollable_frame, text="💧 습도: -- %", font=("맑은 고딕", 14))
-humi_label.pack(pady=5)
-
-pot_label = tk.Label(scrollable_frame, text="🎛 가변저항: --", font=("맑은 고딕", 14))
-pot_label.pack(pady=5)
-
-# 릴레이 상태
-relay_label = tk.Label(scrollable_frame, text="⚡ 릴레이 상태: OFF", font=("맑은 고딕", 14), fg="red")
-relay_label.pack(pady=10)
-
-# LED 제어 버튼
-led_frame = tk.LabelFrame(scrollable_frame, text="LED 제어 (GPIO)", font=("맑은 고딕", 12))
-led_frame.pack(pady=10)
-
+# ===== LED 버튼 =====
 led_buttons = []
 led_layout = [3, 3, 2]
 btn_index = 0
+
+led_frame = tk.Frame(scrollable_frame)
+led_frame.pack(pady=10)
 
 for row, count in enumerate(led_layout):
     for col in range(count):
@@ -144,14 +124,37 @@ for row, count in enumerate(led_layout):
         btn = tk.Button(
             led_frame,
             text=f"LED {btn_index + 1}",
-            width=10, height=2,
-            bg="gray",
-            font=("맑은 고딕", 10),
+            width=10,
+            height=2,
+            bg="light gray",
+            activebackground="green",
+            font=("맑은 고딕", 10, "bold"),
             command=lambda idx=btn_index: toggle_led(idx)
         )
-        btn.grid(row=row, column=col, padx=5, pady=5)
+        btn.grid(row=row, column=col, padx=8, pady=6)
         led_buttons.append(btn)
         btn_index += 1
+
+# ===== 날짜 및 시간 =====
+date_label = tk.Label(scrollable_frame, text="날짜", font=("맑은 고딕", 12))
+date_label.pack(pady=4)
+
+time_label = tk.Label(scrollable_frame, text="시간", font=("맑은 고딕", 12))
+time_label.pack(pady=4)
+
+# ===== 센서 데이터 =====
+temp_label = tk.Label(scrollable_frame, text="🌡 온도: -- °C", font=("맑은 고딕", 14))
+temp_label.pack(pady=4)
+
+humi_label = tk.Label(scrollable_frame, text="💧 습도: -- %", font=("맑은 고딕", 14))
+humi_label.pack(pady=4)
+
+pot_label = tk.Label(scrollable_frame, text="🎛 가변저항: --", font=("맑은 고딕", 14))
+pot_label.pack(pady=4)
+
+# ===== 릴레이 상태 =====
+relay_label = tk.Label(scrollable_frame, text="⚡ 릴레이 상태: OFF", font=("맑은 고딕", 14), fg="red")
+relay_label.pack(pady=10)
 
 # 실행
 connect_mqtt()
